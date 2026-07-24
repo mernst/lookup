@@ -348,7 +348,10 @@ public final class Lookup {
             System.err.println("Error: not a regex: " + keyword);
             System.exit(254);
           }
-          patterns.add(Pattern.compile(keyword, flags));
+          // If --word-match is also supplied, match the regex only at word boundaries.
+          String keywordRegex =
+              word_match ? RegexUtil.asRegex("\\b(?:" + keyword + ")\\b") : keyword;
+          patterns.add(Pattern.compile(keywordRegex, flags));
         }
       } else if (word_match) {
         for (String keyword : keywords) {
@@ -412,11 +415,7 @@ public final class Lookup {
       if (numMatchingEntries == 0) {
         System.out.println("Nothing found.");
       } else if (numMatchingEntries == 1) {
-        EntryReader.Entry e = matchingEntries.get(0);
-        if (show_location) {
-          System.out.printf("%s:%d:%n", e.filename(), e.lineNumber());
-        }
-        System.out.print(e.body());
+        printMatch(matchingEntries.get(0));
       } else { // there are multiple matches
         if (item_num != null) {
           if (item_num < 1) {
@@ -428,11 +427,7 @@ public final class Lookup {
                 "Illegal --item-num %d, should be <= %d%n", item_num, numMatchingEntries);
             System.exit(1);
           }
-          EntryReader.Entry e = matchingEntries.get(item_num - 1);
-          if (show_location) {
-            System.out.printf("%s:%d:%n", e.filename(), e.lineNumber());
-          }
-          System.out.print(e.body());
+          printMatch(matchingEntries.get(item_num - 1));
         } else {
           if (print_all) {
             System.out.printf("%d matches found (separated by dashes below)%n", numMatchingEntries);
@@ -445,13 +440,8 @@ public final class Lookup {
           for (int i = 0; i < numMatchingEntries; i++) {
             EntryReader.Entry e = matchingEntries.get(i);
             if (print_all) {
-              if (show_location) {
-                System.out.printf(
-                    "%n-------------------------%n%s:%d:%n", e.filename(), e.lineNumber());
-              } else {
-                System.out.printf("%n-------------------------%n");
-              }
-              System.out.print(e.body());
+              System.out.printf("%n-------------------------%n");
+              printMatch(e);
             } else {
               if (show_location) {
                 System.out.printf(
@@ -464,5 +454,18 @@ public final class Lookup {
         }
       }
     }
+  }
+
+  /**
+   * Print a matching entry: its location (if {@code --show-location} was supplied) followed by its
+   * body.
+   *
+   * @param e the entry to print
+   */
+  private static void printMatch(EntryReader.Entry e) {
+    if (show_location) {
+      System.out.printf("%s:%d:%n", e.filename(), e.lineNumber());
+    }
+    System.out.print(e.body());
   }
 }
